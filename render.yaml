@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: strool-health-ai
+    env: python
+    buildCommand: ""
+    startCommand: bash start.sh

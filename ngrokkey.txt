@@ -1,0 +1,28 @@
+Or enter the code below into the authenticator app
+
+PHACQPUJN5O56MTONESH46AZQQ7JVHDZ
+
+ngrok
+
+
+
+
+
+codigo com apenai:
+from fastapi import APIRouter, Request
+from app.services.ai_service import get_ai_response
+
+router = APIRouter()
+
+@router.post("/webhook")
+async def whatsapp_webhook(request: Request):
+    data = await request.form()
+
+    incoming_msg = data.get("Body")
+    sender = data.get("From")
+
+    response = get_ai_response(incoming_msg)
+
+    return {
+        "message": response
+    }
