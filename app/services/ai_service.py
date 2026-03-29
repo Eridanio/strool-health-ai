@@ -5,15 +5,19 @@ from dotenv import load_dotenv
 ##load_dotenv()  # Carrega variáveis do .env
 
 ##client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 user_states = {}
 user_data = {}
 consultas = []
 
 def get_ai_response(user, message: str) -> str:
     message = message.lower().strip()
-
     state = user_states.get(user, "menu")
+
+    # VOLTAR
+    if message in ["voltar", "0"]:
+        user_states[user] = "menu"
+        user_data[user] = {}
+        return "🔙 Voltou ao menu.\nDigite *menu* para ver opções."
 
     # MENU
     if message in ["ola", "olá", "menu", "oi"]:
@@ -27,9 +31,11 @@ Como podemos ajudar?
 2️⃣ Ver horários  
 3️⃣ Localização  
 4️⃣ Falar com atendente  
+
+Digite *0* para voltar a qualquer momento.
 """
 
-    # OPÇÃO 1 - MARCAR CONSULTA
+    # INICIAR CONSULTA
     if message == "1":
         user_states[user] = "nome"
         user_data[user] = {}
@@ -38,12 +44,24 @@ Como podemos ajudar?
     # NOME
     if state == "nome":
         user_data[user]["nome"] = message.title()
-        user_states[user] = "data"
-        return "📅 Para que dia deseja marcar?"
+        user_states[user] = "idade"
+        return "🎂 Qual é a sua idade?"
 
-    # DATA
-    if state == "data":
-        user_data[user]["data"] = message
+    # IDADE
+    if state == "idade":
+        user_data[user]["idade"] = message
+        user_states[user] = "dia"
+        return "📅 Qual o dia da consulta?"
+
+    # DIA
+    if state == "dia":
+        user_data[user]["dia"] = message
+        user_states[user] = "mes"
+        return "📆 Qual o mês? (ex: 4 para Abril)"
+
+    # MÊS
+    if state == "mes":
+        user_data[user]["mes"] = message
         user_states[user] = "hora"
         return "⏰ Qual horário prefere?"
 
@@ -51,38 +69,36 @@ Como podemos ajudar?
     if state == "hora":
         user_data[user]["hora"] = message
 
-        # 💾 SALVAR CONSULTA
         consulta = {
             "user": user,
             "nome": user_data[user]["nome"],
-            "data": user_data[user]["data"],
+            "idade": user_data[user]["idade"],
+            "dia": user_data[user]["dia"],
+            "mes": user_data[user]["mes"],
             "hora": user_data[user]["hora"]
         }
 
         consultas.append(consulta)
 
-        # Reset estado
         user_states[user] = "menu"
 
-        return f"""✅ Consulta marcada com sucesso!
+        return f"""✅ Consulta marcada!
 
 📋 Detalhes:
 Nome: {consulta['nome']}
-Data: {consulta['data']}
+Idade: {consulta['idade']}
+Data: {consulta['dia']}/{consulta['mes']}
 Hora: {consulta['hora']}
+"""
 
-Entraremos em contacto em breve."""
-
-    # OPÇÃO 2
+    # OUTRAS OPÇÕES
     if message == "2":
         return "🕒 Funcionamos das 8h às 17h, de segunda a sexta."
 
-    # OPÇÃO 3
     if message == "3":
-        return "📍 Estamos localizados em Luanda no municipio do Talatona."
+        return "📍 Estamos localizados em Luanda - Talatona."
 
-    # OPÇÃO 4
     if message == "4":
-        return "👨‍⚕️ Um atendente irá falar consigo em breve."
+        return "👨‍⚕️ Um atendente irá falar consigo."
 
-    return "❗ Opção inválida. Digite *menu* para voltar."
+    return "❗ Opção inválida. Digite *menu*."
