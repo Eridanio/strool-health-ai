@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 from xml.sax.saxutils import escape
-
 from app.database import engine
 from sqlalchemy import text
 
 router = APIRouter()
 
-# estado simples por usuário
 user_state = {}
 
 @router.post("/webhook")
@@ -17,10 +15,9 @@ async def whatsapp_webhook(request: Request):
     incoming_msg = form_data.get("Body")
     user = form_data.get("From")
 
-    # 🔒 proteção (evita crash)
     if not incoming_msg or not user:
         return Response(
-            content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+            content='<?xml version="1.0"?><Response></Response>',
             media_type="application/xml"
         )
 
@@ -31,18 +28,33 @@ async def whatsapp_webhook(request: Request):
 
     state = user_state[user]
 
-    # 🔁 comandos globais
-    if incoming_msg in ["menu", "ola", "olá", "oi"]:
+    # 🔁 RESET GLOBAL
+    if incoming_msg in ["menu", "oi", "ola", "olá"]:
         state.clear()
         state["step"] = "menu"
 
-    if incoming_msg in ["voltar", "0"]:
+    if incoming_msg in ["0", "voltar"]:
         state.clear()
         state["step"] = "menu"
 
-    # MENU
+    # ================= MENU =================
     if state["step"] == "menu":
-        reply = """👋 Bem-vindo à Strool Health AI
+
+        if incoming_msg == "1":
+            state["step"] = "nome"
+            reply = "🧑 Qual é o seu nome?"
+
+        elif incoming_msg == "2":
+            reply = "🕒 Funcionamos das 8h às 17h, de segunda a sexta."
+
+        elif incoming_msg == "3":
+            reply = "📍 Estamos localizados em Luanda - Talatona."
+
+        elif incoming_msg == "4":
+            reply = "👨‍⚕️ Um atendente irá falar consigo."
+
+        else:
+            reply = """👋 Bem-vindo à Strool Health AI
 
 Como podemos ajudar?
 
@@ -53,35 +65,29 @@ Como podemos ajudar?
 
 Digite 0 para voltar.
 """
-        if incoming_msg == "1":
-            state["step"] = "nome"
-            reply = "🧑 Qual é o seu nome?"
 
-    # NOME
+    # ================= FLUXO CONSULTA =================
+
     elif state["step"] == "nome":
         state["nome"] = incoming_msg
         state["step"] = "idade"
         reply = "🎂 Qual é a sua idade?"
 
-    # IDADE
     elif state["step"] == "idade":
         state["idade"] = incoming_msg
         state["step"] = "dia"
         reply = "📅 Qual o dia da consulta?"
 
-    # DIA
     elif state["step"] == "dia":
         state["dia"] = incoming_msg
         state["step"] = "mes"
         reply = "📆 Qual o mês? (ex: 4 para Abril)"
 
-    # MÊS
     elif state["step"] == "mes":
         state["mes"] = incoming_msg
         state["step"] = "hora"
         reply = "⏰ Qual horário prefere?"
 
-    # HORA + SALVAR NO BANCO
     elif state["step"] == "hora":
         state["hora"] = incoming_msg
 
@@ -99,9 +105,8 @@ Digite 0 para voltar.
                     "hora": state["hora"]
                 })
                 conn.commit()
-
         except Exception as e:
-            print("ERRO AO SALVAR:", e)
+            print("ERRO DB:", e)
 
         reply = f"""✅ Consulta marcada!
 
@@ -110,32 +115,20 @@ Nome: {state["nome"]}
 Idade: {state["idade"]}
 Data: {state["dia"]}/{state["mes"]}
 Hora: {state["hora"]}
-
-Entraremos em contacto em breve.
 """
 
         state.clear()
         state["step"] = "menu"
 
-    # OUTRAS OPÇÕES
-    elif incoming_msg == "2":
-        reply = "🕒 Funcionamos das 8h às 17h, de segunda a sexta."
-
-    elif incoming_msg == "3":
-        reply = "📍 Estamos localizados em Luanda - Talatona."
-
-    elif incoming_msg == "4":
-        reply = "👨‍⚕️ Um atendente irá falar consigo."
-
     else:
-        reply = "❗ Opção inválida. Digite 'menu'."
+        reply = "❗ Digite 'menu' para começar."
 
-    # 🔐 segurança XML
     safe_reply = escape(reply)
 
-    twiml_response = f"""<?xml version="1.0" encoding="UTF-8"?>
+    return Response(
+        content=f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
 <Message>{safe_reply}</Message>
-</Response>"""
-
-    return Response(content=twiml_response, media_type="application/xml")
+</Response>""",
+        media_type="application/xml"
+    )
