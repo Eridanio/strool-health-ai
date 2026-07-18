@@ -207,3 +207,16 @@ marimo/_lsp/
 __marimo__/
 .env
 strool-health-ai.git/
+
+
+
+# Environment variables
+.env
+
+# Sensitive files
+ngrokkey.txt
+twilio_2FA_recovery_code.txt
+
+# Python cache
+__pycache__/
+*.pyc
