@@ -220,3 +220,8 @@ twilio_2FA_recovery_code.txt
 # Python cache
 __pycache__/
 *.pyc
+
+
+# Local git backups
+*.git/
+*.git.bfg-report/
